@@ -22,6 +22,10 @@ mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopol
 // Example route for user authentication
 const userRoutes = require("./routes/userRoutes");
 const mediaRoutes = require("./routes/mediaRoutes");
+const authRoutes = require('./routes/authRoutes');
+
+// Auth routes
+app.use('/api/auth', authRoutes);
 
 // Media routes
 app.use("/api/media", mediaRoutes);
