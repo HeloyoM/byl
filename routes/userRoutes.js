@@ -8,8 +8,11 @@ router.post("/login", (req, res) => {
   res.send("User login");
 });
 
-// router.get('/user/profile', /*authenticate,*/ userController.getProfile);
+router.get("/profile", async (req, res) => {
 
-// router.put('/user/profile', /*authenticate,*/ userController.updateProfile);
+      const id = req.userId
+
+        userController.getProfile(id)
+})
 
 module.exports = router;

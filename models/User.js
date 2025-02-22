@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   phone: { type: String, required: true },
   name: { type: String, required: true },
-  password: { type: String, required: true },  // In case you add password authentication later
+  password: { type: String, required: false },  // In case you add password authentication later
 });
 
 const User = mongoose.model("User", userSchema);

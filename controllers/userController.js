@@ -1,7 +1,8 @@
 const User = require('../models/User')
+const mongoose = require('mongoose')
 
-async function getProfile(userId) {
-    return await User.findById(userId)
+async function getProfile(email) {
+    return await User.find({ email })
 }
 
 async function updateProfile() {
