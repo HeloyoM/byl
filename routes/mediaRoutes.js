@@ -4,11 +4,18 @@ const express = require("express");
 const router = express.Router();
 const Media = require("../models/Media");
 const cloudinary = require("cloudinary").v2;
-
+const { dirname, join } = require('node:path')
+const { createWriteStream,
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  unlinkSync, } = require('node:fs');
+const { streamifier } = require("node:stream")
 const multer = require('multer');
 require("dotenv").config();
 
-const tags = ['nodejs-sample'];
+const tags = ['byl'];
 
 const upload = multer({ storage: multer.memoryStorage() });
 // Cloudinary configuration
@@ -165,12 +172,11 @@ router.get("/resources", async (req, res) => {
 });
 
 
-router.post('/upload-from-browser', upload.single('file'), async (req, reply) => {
+router.post('/upload-image', upload.single('file'), async (req, res) => {
 
   try {
-    const data = req.file;
-    console.log({ data })
-    const buffer = data.buffer
+    const buffer = req.file.buffer
+
     await new Promise((resolve) => {
       cloudinary.config({
         cloud_name: process.env.CLOUD_NAME,
@@ -180,11 +186,11 @@ router.post('/upload-from-browser', upload.single('file'), async (req, reply) =>
       cloudinary.uploader
         .upload_chunked_stream({ tags }, (error, uploadResult) => {
           if (error) {
-            reply.code(500).send({ error: 'Failed to upload image' });
+            res.code(500).send({ error: 'Failed to upload image' });
           } else {
             console.log({ uploadResult })
             resolve(uploadResult);
-            reply.send({
+            res.send({
               url: uploadResult.secure_url,
               public_id: uploadResult.public_id,
             });
@@ -196,5 +202,121 @@ router.post('/upload-from-browser', upload.single('file'), async (req, reply) =>
     console.error({ error });
   }
 })
+
+const CHUNK_SIZE = 6000000;
+router.post('/upload-large-from-local', upload.single('video'), async (req, res) => {
+  try {
+    const filePath = join(__dirname, '../byl-static/src/assets/file_example_MP4_480_1_5MG.mp4');
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      cloudinary.config({
+        cloud_name: process.env.CLOUD_NAME,
+        api_key: process.env.CLOUD_API_KEY,
+        api_secret: process.env.CLOUD_API_SECRET
+      })
+      cloudinary.uploader.upload_large(
+        filePath,
+        {
+          resource_type: 'video',
+          chunk_size: CHUNK_SIZE,
+          tags,
+        },
+        (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        }
+      );
+    });
+    res.send({ url: uploadResult.secure_url });
+  } catch (error) {
+    console.error({ error });
+    res.status(500).send({ error: 'Failed to upload video' });
+  }
+})
+
+
+//videos uploader
+// router.post('/upload-large-stream-from-browser', upload.single("video"), async (req, res) => {
+
+//   try {
+//     const data = await request.file();
+
+//     if (!data) {
+//       return res.status(400).send({ error: 'No file uploaded' });
+//     }
+
+//     const uniqueUploadId = req.headers['x-unique-upload-id'];
+//     const contentRange = req.headers['content-range'];
+
+//     if (!uniqueUploadId || !contentRange) {
+//       return res.status(400).send({ error: 'Missing headers' });
+//     }
+
+//     const rangeMatches = contentRange.match(/bytes (\d+)-(\d+)\/(\d+)/);
+//     if (!rangeMatches) {
+//       return res.status(400).send({ error: 'Invalid Content-Range header' });
+//     }
+
+//     const start = parseInt(rangeMatches[1], 10);
+//     const totalSize = parseInt(rangeMatches[3], 10);
+
+//     const uploadDir = join(__dirname, 'uploads');
+//     if (!existsSync(uploadDir)) {
+//       mkdirSync(uploadDir, { recursive: true });
+//     }
+
+//     const filePath = join(uploadDir, `${uniqueUploadId}.tmp`);
+//     const writeStream = createWriteStream(filePath, { flags: 'a', start });
+
+//     // await new Promise((resolve, reject) => {
+//     //   data.file.pipe(writeStream);
+//     //   data.file.on('end', resolve);
+//     //   writeStream.on('error', reject);
+//     // });
+
+//     // console.log({ filePath })
+//     const fileStats = statSync(filePath);
+//     console.log({ fileStats })
+
+//     if (fileStats.size === totalSize) {
+//       //   try {
+//       const uploadResult = await new Promise((resolve, reject) => {
+//         cloudinary.uploader.upload_large(
+//           filePath,
+//           {
+//             tags,
+//             resource_type: 'auto',
+//             chunk_size: CHUNK_SIZE,
+//           },
+//           (error, result) => {
+//             if (error) {
+//               reject(error);
+//             } else {
+//               resolve(result);
+//             }
+//           }
+//         );
+//       });
+//       console.log({ uploadResult })
+//       // unlinkSync(filePath);
+
+//       res.send({ status: 'Upload complete', url: uploadResult.secure_url });
+//       //   } catch (cloudinaryError) {
+//       //     console.error('Cloudinary upload failed:', cloudinaryError);
+//       //     res.status(500).send({ error: 'Failed to upload to Cloudinary' });
+//       //   }
+//       // } else {
+//       //   res.send({ status: 'Chunk received', receivedSize: fileStats.size });
+//     }
+//   } catch (error) {
+//     console.error('Error processing upload:', { error });
+//     // res
+//     //   .status(500)
+//     //   .send({ error: 'Internal fastify error', details: error.message });
+//   }
+// });
 
 module.exports = router;
