@@ -5,23 +5,28 @@ const router = express.Router();
 const Media = require("../models/Media");
 const cloudinary = require("cloudinary").v2;
 
+const multer = require('multer');
+require("dotenv").config();
+
+const tags = ['nodejs-sample'];
+
+const upload = multer({ storage: multer.memoryStorage() });
 // Cloudinary configuration
+
 cloudinary.config({
   cloud_name: process.env.CLOUD_NAME,
   api_key: process.env.CLOUD_API_KEY,
-  api_secret: process.env.CLOUD_API_SECRET,
-  secure: true
+  api_secret: process.env.CLOUD_API_SECRET
 });
 
 console.log(cloudinary.config());
-
 /////////////////////////
 // Uploads an image file
 /////////////////////////
 // const uploadImage = async (imagePath) => {
 
-  // Use the uploaded file's name as the asset's public ID and 
-  // allow overwriting the asset with new versions
+// Use the uploaded file's name as the asset's public ID and 
+// allow overwriting the asset with new versions
 //   const options = {
 //     use_filename: true,
 //     unique_filename: false,
@@ -158,5 +163,38 @@ router.get("/resources", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+
+router.post('/upload-from-browser', upload.single('file'), async (req, reply) => {
+
+  try {
+    const data = req.file;
+    console.log({ data })
+    const buffer = data.buffer
+    await new Promise((resolve) => {
+      cloudinary.config({
+        cloud_name: process.env.CLOUD_NAME,
+        api_key: process.env.CLOUD_API_KEY,
+        api_secret: process.env.CLOUD_API_SECRET
+      })
+      cloudinary.uploader
+        .upload_chunked_stream({ tags }, (error, uploadResult) => {
+          if (error) {
+            reply.code(500).send({ error: 'Failed to upload image' });
+          } else {
+            console.log({ uploadResult })
+            resolve(uploadResult);
+            reply.send({
+              url: uploadResult.secure_url,
+              public_id: uploadResult.public_id,
+            });
+          }
+        })
+        .end(buffer);
+    });
+  } catch (error) {
+    console.error({ error });
+  }
+})
 
 module.exports = router;
