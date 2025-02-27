@@ -13,6 +13,7 @@ const { createWriteStream,
   unlinkSync, } = require('node:fs');
 const { streamifier } = require("node:stream")
 const multer = require('multer');
+const { isArray } = require("node:util");
 require("dotenv").config();
 
 const tags = ['byl'];
@@ -318,5 +319,24 @@ router.post('/upload-large-from-local', upload.single('video'), async (req, res)
 //     //   .send({ error: 'Internal fastify error', details: error.message });
 //   }
 // });
+
+
+router.get('/list-uploaded-files', async (req, res) => {
+  console.log('Listing uploaded files tagged', tags[0]);
+  try {
+    cloudinary.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.CLOUD_API_KEY,
+      api_secret: process.env.CLOUD_API_SECRET
+    })
+
+    const resources = await cloudinary.api.resources()
+
+    res.status(200).send(resources);
+  } catch (error) {
+    console.error(error);
+    res.status(500).send({ error: 'Failed to retrieve files' });
+  }
+})
 
 module.exports = router;
