@@ -1,5 +1,3 @@
-// routes/mediaRoutes.js
-
 const express = require("express");
 const router = express.Router();
 const Media = require("../models/Media");
@@ -13,7 +11,6 @@ const { createWriteStream,
   unlinkSync, } = require('node:fs');
 const { streamifier } = require("node:stream")
 const multer = require('multer');
-const { isArray } = require("node:util");
 require("dotenv").config();
 
 const tags = ['byl'];
@@ -146,32 +143,26 @@ console.log(cloudinary.config());
 //   }
 // });
 
-// Delete media
 router.delete("/delete/:id", async (req, res) => {
   try {
-    const media = await Media.findByIdAndDelete(req.params.id);
-    if (!media) return res.status(404).json({ error: "Media not found" });
 
-    // Optionally, delete from Cloudinary as well
-    await cloudinary.uploader.destroy(media.public_id);
+    const { id } = req.params
+
+    cloudinary.config({
+      cloud_name: process.env.CLOUD_NAME,
+      api_key: process.env.CLOUD_API_KEY,
+      api_secret: process.env.CLOUD_API_SECRET
+    })
+
+    cloudinary.api.delete_resources([id],
+      { type: 'upload', resource_type: 'image' }).then(console.log);
 
     res.status(200).json({ message: "Media deleted successfully" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.log({ err })
+    res.status(500).json({ err });
   }
 });
-
-//get resources
-router.get("/resources", async (req, res) => {
-  try {
-    console.log({ cloudinary })
-    const media = await cloudinary.api.resource().then(result => console.log({ result }))
-    console.log({ media })
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 
 router.post('/upload-image', upload.single('file'), async (req, res) => {
 
@@ -210,11 +201,13 @@ router.post('/upload-large-from-local', upload.single('video'), async (req, res)
     const filePath = join(__dirname, '../byl-static/src/assets/file_example_MP4_480_1_5MG.mp4');
 
     const uploadResult = await new Promise((resolve, reject) => {
+
       cloudinary.config({
         cloud_name: process.env.CLOUD_NAME,
         api_key: process.env.CLOUD_API_KEY,
         api_secret: process.env.CLOUD_API_SECRET
       })
+
       cloudinary.uploader.upload_large(
         filePath,
         {
@@ -322,7 +315,6 @@ router.post('/upload-large-from-local', upload.single('video'), async (req, res)
 
 
 router.get('/list-uploaded-files', async (req, res) => {
-  console.log('Listing uploaded files tagged', tags[0]);
   try {
     cloudinary.config({
       cloud_name: process.env.CLOUD_NAME,
@@ -334,7 +326,6 @@ router.get('/list-uploaded-files', async (req, res) => {
 
     res.status(200).send(resources);
   } catch (error) {
-    console.error(error);
     res.status(500).send({ error: 'Failed to retrieve files' });
   }
 })
