@@ -157,7 +157,7 @@ router.delete("/delete/:id", async (req, res) => {
     cloudinary.api.delete_resources([id],
       { type: 'upload', resource_type: 'image' }).then(console.log);
 
-    res.status(200).json({ message: "Media deleted successfully" });
+    res.status(200).json(id);
   } catch (err) {
     console.log({ err })
     res.status(500).json({ err });
