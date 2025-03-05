@@ -195,12 +195,48 @@ router.post('/upload-image', upload.single('file'), async (req, res) => {
   }
 })
 
-const CHUNK_SIZE = 6000000;
-router.post('/upload-large-from-local', upload.single('video'), async (req, res) => {
-  try {
-    const filePath = join(__dirname, '../byl-static/src/assets/file_example_MP4_480_1_5MG.mp4');
+// const CHUNK_SIZE = 6000000;
+// router.post('/upload-large-from-local', upload.single('video'), async (req, res) => {
+//   try {
+//     const filePath = join(__dirname, '../byl-static/src/assets/file_example_MP4_480_1_5MG.mp4');
 
-    const uploadResult = await new Promise((resolve, reject) => {
+//     const uploadResult = await new Promise((resolve, reject) => {
+
+//       cloudinary.config({
+//         cloud_name: process.env.CLOUD_NAME,
+//         api_key: process.env.CLOUD_API_KEY,
+//         api_secret: process.env.CLOUD_API_SECRET
+//       })
+
+//       cloudinary.uploader.upload_large(
+//         filePath,
+//         {
+//           resource_type: 'video',
+//           chunk_size: CHUNK_SIZE,
+//           tags,
+//         },
+//         (error, result) => {
+//           if (error) {
+//             reject(error);
+//           } else {
+//             resolve(result);
+//           }
+//         }
+//       );
+//     });
+//     res.send({ url: uploadResult.secure_url });
+//   } catch (error) {
+//     console.error({ error });
+//     res.status(500).send({ error: 'Failed to upload video' });
+//   }
+// })
+
+router.post('/upload-large-stream-from-browser', upload.single('video'), async (req, res) => {
+  console.log('Uploading (large) files from the browser using streams');
+  try {
+    const buffer = req.file.buffer;
+    console.log({ buffer })
+    await new Promise((resolve) => {
 
       cloudinary.config({
         cloud_name: process.env.CLOUD_NAME,
@@ -208,29 +244,28 @@ router.post('/upload-large-from-local', upload.single('video'), async (req, res)
         api_secret: process.env.CLOUD_API_SECRET
       })
 
-      cloudinary.uploader.upload_large(
-        filePath,
-        {
-          resource_type: 'video',
-          chunk_size: CHUNK_SIZE,
-          tags,
-        },
-        (error, result) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve(result);
+      cloudinary.uploader
+        .upload_stream(
+          { tags, resource_type: 'video' },
+          (error, uploadResult) => {
+            if (error) {
+              console.error(error);
+              res.status(500).send({ error: 'Failed to upload video' });
+            } else {
+              resolve(uploadResult);
+              res.send({
+                url: uploadResult.secure_url,
+                public_id: uploadResult.public_id,
+              });
+            }
           }
-        }
-      );
+        )
+        .end(buffer);
     });
-    res.send({ url: uploadResult.secure_url });
   } catch (error) {
-    console.error({ error });
-    res.status(500).send({ error: 'Failed to upload video' });
+    console.error(error);
   }
 })
-
 
 //videos uploader
 // router.post('/upload-large-stream-from-browser', upload.single("video"), async (req, res) => {
@@ -322,7 +357,7 @@ router.get('/list-uploaded-files', async (req, res) => {
       api_secret: process.env.CLOUD_API_SECRET
     })
 
-    const resources = await cloudinary.api.resources()
+    const resources = await cloudinary.api.resources({ tags })
 
     res.status(200).send(resources);
   } catch (error) {
